@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Inchwise: a free game for learning inches, feet, yards, miles and square feet in metric. No sign-up.">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Inchwise</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: warm grey canvas, one white game panel with a giant measurement, cheat sheet beside it. Text only, color = meaning. Kiri Tasks tokens. */
+:root{
+  --canvas:#ECEBE7; --surface:#FFFFFF; --sunk:#F5F4F0; --line:#E1E0DA; --fg:#1C2420; --muted:#6F7A73;
+  --accent:#2F6F55; --accent-bg:#E6F0EB; --on-accent:#FFFFFF;
+  --exact:#2F6F55; --exact-bg:#E6F0EB;
+  --close:#2F5F9E; --close-bg:#E5ECF6;
+  --near:#9A6512; --near-bg:#F6EEDD;
+  --miss:#B23A2B; --miss-bg:#F7E6E2;
+  --f-display:"Inter Tight","Inter",system-ui,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --r-panel:24px; --r-ctl:12px;
+  --glass:rgba(255,255,255,.86); --glass-line:rgba(255,255,255,.6); --scrim:rgba(236,235,231,.18);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --canvas:#161917; --surface:#1E2220; --sunk:#252A27; --line:#2F3532; --fg:#E7ECE9; --muted:#9AA59F;
+  --accent:#7CC3A3; --accent-bg:#1F3329; --on-accent:#10251B;
+  --exact:#7CC3A3; --exact-bg:#1F3329; --close:#8FB4E8; --close-bg:#1E2A3A;
+  --near:#E2B162; --near-bg:#352B19; --miss:#EE8A7B; --miss-bg:#3A221E; --glass:rgba(26,30,28,.84); --glass-line:rgba(255,255,255,.08); --scrim:rgba(10,12,11,.35); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --canvas:#161917; --surface:#1E2220; --sunk:#252A27; --line:#2F3532; --fg:#E7ECE9; --muted:#9AA59F;
+  --accent:#7CC3A3; --accent-bg:#1F3329; --on-accent:#10251B;
+  --exact:#7CC3A3; --exact-bg:#1F3329; --close:#8FB4E8; --close-bg:#1E2A3A;
+  --near:#E2B162; --near-bg:#352B19; --miss:#EE8A7B; --miss-bg:#3A221E; --glass:rgba(26,30,28,.84); --glass-line:rgba(255,255,255,.08); --scrim:rgba(10,12,11,.35); color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--canvas);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 40px;
+  font-variant-numeric:tabular-nums}
+.app{position:relative;z-index:1;max-width:1120px;margin:0 auto;display:grid;gap:16px}
+.bg{position:fixed;inset:0;z-index:0;background:var(--canvas);overflow:hidden}
+.bg img{width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .9s ease;display:block}
+.bg img.on{opacity:1}
+.bg::after{content:"";position:absolute;inset:0;background:var(--scrim)}
+.bar{display:grid;gap:14px;background:var(--glass);border:1px solid var(--glass-line);border-radius:var(--r-panel);padding:16px 20px;-webkit-backdrop-filter:blur(18px) saturate(1.15);backdrop-filter:blur(18px) saturate(1.15)}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.brand h1{font-family:var(--f-display);font-weight:700;font-size:22px;letter-spacing:-.01em;margin:0}
+.brand p{margin:0;color:var(--muted);font-size:13px}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.txtbtn{background:none;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;color:var(--muted)}
+.txtbtn:hover{color:var(--fg);border-color:var(--muted)}
+.txtbtn b{color:var(--fg);font-weight:600}
+
+.setup{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
+.group{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px;flex-wrap:wrap}
+.seg button{border:0;background:none;border-radius:999px;padding:5px 12px;font-size:13px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--surface)}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-size:13px;color:var(--muted)}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-bg);color:var(--accent);font-weight:500}
+
+.main{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+@media (max-width:880px){.main{grid-template-columns:1fr}}
+
+.panel{background:var(--glass);border:1px solid var(--glass-line);-webkit-backdrop-filter:blur(18px) saturate(1.15);backdrop-filter:blur(18px) saturate(1.15);border-radius:var(--r-panel);padding:clamp(20px,4vw,36px);min-width:0}
+.status{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.dots{display:flex;gap:5px}
+.dots span{width:22px;height:6px;border-radius:3px;background:var(--line);transition:background .3s}
+.dots span.now{background:var(--fg)}
+.dots span.t3{background:var(--exact)} .dots span.t2{background:var(--close)} .dots span.t1{background:var(--near)} .dots span.t0{background:var(--miss)}
+.stats{display:flex;gap:18px}
+.stat{display:grid;justify-items:end}
+.stat .v{font-family:var(--f-display);font-weight:600;font-size:20px;line-height:1.1}
+.stat .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.stat.hot .v{color:var(--near)}
+
+.q{margin-top:28px}
+.q .ask{color:var(--muted);font-size:15px}
+.q .big{font-family:var(--f-display);font-weight:700;letter-spacing:-.03em;line-height:1;font-size:clamp(60px,13vw,120px);margin:6px 0 4px;word-break:break-word}
+.q .big small{font-size:.32em;font-weight:500;letter-spacing:0;color:var(--muted);margin-left:.25em}
+.q .to{font-size:15px}
+.q .to b{font-weight:600}
+
+form{margin-top:22px;display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+.field{display:flex;align-items:center;background:var(--sunk);border:1px solid var(--line);border-radius:var(--r-ctl);padding:0 14px;min-width:0;flex:1 1 180px}
+.field input{border:0;background:none;font-family:var(--f-display);font-size:28px;font-weight:600;padding:12px 0;width:100%;min-width:0;color:var(--fg)}
+.field input:focus{outline:none}
+.field:focus-within{border-color:var(--accent)}
+.field span{color:var(--muted);font-size:16px;white-space:nowrap;padding-left:8px}
+.primary{background:var(--accent);color:var(--on-accent);border:0;border-radius:var(--r-ctl);padding:0 22px;font-weight:600;font-size:15px;min-height:58px}
+.primary:hover{filter:brightness(1.08)}
+.ghost{background:none;border:1px solid var(--line);border-radius:var(--r-ctl);padding:0 16px;font-size:14px;color:var(--muted);min-height:58px}
+.ghost:hover{color:var(--fg)}
+.hintline{margin-top:12px;font-size:13px;color:var(--muted);min-height:20px}
+.hintline b{color:var(--fg);font-weight:500}
+.err{color:var(--miss)}
+
+.result{margin-top:22px;padding-top:22px;border-top:1px solid var(--line);display:grid;gap:16px}
+.verdict{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:6px 14px 6px 12px;font-weight:600;font-size:15px}
+.pill::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.pill.t3{background:var(--exact-bg);color:var(--exact)} .pill.t2{background:var(--close-bg);color:var(--close)}
+.pill.t1{background:var(--near-bg);color:var(--near)} .pill.t0{background:var(--miss-bg);color:var(--miss)}
+.pop{animation:pop .35s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+.verdict .pts{font-family:var(--f-display);font-weight:600;font-size:15px}
+.verdict .off{color:var(--muted);font-size:13px}
+.answer{font-size:15px}
+.answer b{font-family:var(--f-display);font-weight:600;font-size:22px}
+
+.ruler{position:relative;height:112px;margin:4px 6px 0}
+.ruler .track{position:absolute;left:0;right:0;top:32px;height:28px;border-bottom:1px solid var(--fg)}
+.tick{position:absolute;bottom:0;width:1px;background:var(--fg)}
+.tick.maj{height:16px} .tick.min{height:8px;opacity:.5}
+.tlab{position:absolute;top:30px;transform:translateX(-50%);font-size:11px;color:var(--muted);white-space:nowrap}
+.mark{position:absolute;top:0;transform:translateX(-50%);display:grid;justify-items:center;transition:left .7s cubic-bezier(.2,.9,.25,1)}
+.mark .ml{font-size:11px;font-weight:600;border-radius:6px;padding:1px 7px;white-space:nowrap}
+.mark .stem{width:2px;height:46px}
+.mark.ans .ml{background:var(--accent);color:var(--on-accent)} .mark.ans .stem{background:var(--accent)}
+.mark.you .ml{background:var(--sunk);color:var(--fg);border:1px solid var(--line)} .mark.you .stem{background:var(--muted)}
+.mark.you{top:60px} .mark.you .stem{height:6px}
+.ruler .tlabs{position:absolute;left:0;right:0;top:62px}
+
+.trick{background:var(--sunk);border-radius:var(--r-ctl);padding:12px 14px;font-size:13px}
+.trick .label{display:block;margin-bottom:2px}
+.next{display:flex;gap:10px;flex-wrap:wrap}
+
+.done h2{font-family:var(--f-display);font-weight:700;font-size:clamp(48px,10vw,88px);letter-spacing:-.03em;line-height:1;margin:22px 0 6px}
+.done h2 small{font-size:.3em;color:var(--muted);font-weight:500;letter-spacing:0}
+.done .sub{color:var(--muted);font-size:15px;margin:0 0 18px}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.review{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{text-align:left;font-weight:500;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+
+aside{display:grid;gap:16px}
+.sheet{background:var(--glass);border:1px solid var(--glass-line);-webkit-backdrop-filter:blur(18px) saturate(1.15);backdrop-filter:blur(18px) saturate(1.15);border-radius:var(--r-panel);padding:22px}
+.sheet h3{font-family:var(--f-display);font-weight:600;font-size:16px;margin:0 0 12px}
+.sheet dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13.5px}
+.sheet dt{font-weight:600;white-space:nowrap}
+.sheet dd{margin:0;color:var(--muted)}
+.sheet ul{margin:0;padding:0;list-style:none;display:grid;gap:8px;font-size:13.5px}
+.sheet li b{font-weight:600}
+.sheet .note{margin:12px 0 0;font-size:12px;color:var(--muted)}
+.hist{display:grid;gap:6px;font-size:13px}
+.hist div{display:flex;justify-content:space-between;gap:8px;color:var(--muted)}
+.hist div b{color:var(--fg);font-weight:600}
+.empty{color:var(--muted);font-size:13px}
+
+@media (max-width:480px){.stats{gap:12px}.dots span{width:14px}.primary,.ghost{flex:1 1 auto}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="bg" aria-hidden="true"><img id="bgImg" alt=""></div>
+<div class="app">
+  <div class="bar">
+  <header>
+    <div class="brand"><h1>Inchwise</h1><p id="tagline"></p></div>
+    <div class="tools">
+      <button class="txtbtn" id="photoBtn" type="button"></button>
+      <button class="txtbtn" id="soundBtn" type="button"></button>
+      <button class="txtbtn" id="langBtn" type="button"></button>
+    </div>
+  </header>
+
+  <div class="setup">
+    <div class="group"><span class="label" id="lMode"></span><div class="seg" id="modeSeg"></div></div>
+    <div class="group"><span class="label" id="lMetric"></span><div class="seg" id="metricSeg"></div></div>
+    <div class="group"><span class="label" id="lLevel"></span><div class="seg" id="levelSeg"></div></div>
+    <div class="group"><span class="label" id="lUnits"></span><div class="group" id="unitChips"></div></div>
+  </div>
+  </div>
+
+  <div class="main">
+    <section class="panel" id="game" aria-live="polite"></section>
+    <aside>
+      <div class="sheet">
+        <h3 id="hSheet"></h3>
+        <dl id="exactList"></dl>
+        <p class="note" id="exactNote"></p>
+      </div>
+      <div class="sheet">
+        <h3 id="hTricks"></h3>
+        <ul id="trickList"></ul>
+      </div>
+      <div class="sheet">
+        <h3 id="hHist"></h3>
+        <div class="hist" id="histList"></div>
+        <div style="margin-top:12px"><button class="txtbtn" id="clearBtn" type="button"></button></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function(){
+/* ---------- storage (optional) ---------- */
+const LS={get(k,d){try{const v=localStorage.getItem("inchwise."+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+          set(k,v){try{localStorage.setItem("inchwise."+k,JSON.stringify(v))}catch(e){}}};
+
+/* ---------- text ---------- */
+const T={
+en:{tagline:"Feel inches and feet in centimeters",mode:"Direction",metric:"Train in",level:"Level",units:"Units",
+  modes:{im:"Imperial to metric",mi:"Metric to imperial",mix:"Mixed"},
+  levels:{tiny:"Inchling",easy:"Easy",mid:"Medium",arch:"Architect"},
+  unitNames:{in:"Inches",ft:"Feet",yd:"Yards",mi:"Miles",sqft:"Sq feet"},
+  photo:"Next photo",sound:"Sound",on:"on",off:"off",lang:"RU",
+  q:"Question",score:"Score",streak:"Streak",best:"Best",
+  ask:"How much is",inUnit:"in",check:"Check",hint:"Hint",hintCost:"A hint caps this question at 2 points.",cheat:"Remember",
+  next:"Next",finish:"See results",enterNum:"Type a number, for example 7 1/2 or 7.5",
+  v:["Miss","Ballpark","Close","Exact"],pts:n=>n===1?"+1 point":`+${n} points`,
+  off2:p=>`off by ${p}%`,you:"You",ans:"Answer",correct:"Exact value",trick:"Quick way",
+  done:"Round complete",of:"of",acc:"accuracy",bstreak:"best streak",again:"Play again",
+  newBest:"New best for this setup",cols:["","Given","You","Exact"],
+  sheet:"Exact definitions",note:"Since 1959 these are exact by definition. Everything else is derived.",
+  tricks:"Mental shortcuts",hist:"Recent rounds",clear:"Clear history",noHist:"Your rounds stay in this browser only. Nothing is sent anywhere.",
+  ftLab:"ft",inLab:"in"},
+ru:{tagline:"Почувствуй дюймы и футы в сантиметрах",mode:"Направление",metric:"Тренировать в",level:"Уровень",units:"Единицы",
+  modes:{im:"Имперские в метрические",mi:"Метрические в имперские",mix:"Вперемешку"},
+  levels:{tiny:"Дюймовочка",easy:"Легко",mid:"Средне",arch:"Архитектор"},
+  unitNames:{in:"Дюймы",ft:"Футы",yd:"Ярды",mi:"Мили",sqft:"Кв. футы"},
+  photo:"Другое фото",sound:"Звук",on:"вкл",off:"выкл",lang:"EN",
+  q:"Вопрос",score:"Очки",streak:"Серия",best:"Рекорд",
+  ask:"Сколько это",inUnit:"в",check:"Проверить",hint:"Подсказка",hintCost:"С подсказкой максимум 2 очка за вопрос.",cheat:"Запомни",
+  next:"Дальше",finish:"Итоги",enterNum:"Введи число, например 7 1/2 или 7,5",
+  v:["Мимо","Примерно","Близко","Точно"],pts:n=>`+${n} ${n===1?"очко":"очка"}`,
+  off2:p=>`ошибка ${p}%`,you:"Ты",ans:"Ответ",correct:"Точное значение",trick:"Как прикинуть",
+  done:"Раунд завершён",of:"из",acc:"точность",bstreak:"лучшая серия",again:"Ещё раунд",
+  newBest:"Новый рекорд для этих настроек",cols:["","Дано","Ты","Точно"],
+  sheet:"Точные определения",note:"С 1959 года это точные значения по определению. Всё остальное выводится из них.",
+  tricks:"Быстрый счёт в уме",hist:"Последние раунды",clear:"Очистить историю",noHist:"Результаты хранятся только в этом браузере. Никуда не отправляются.",
+  ftLab:"фт",inLab:"дюйм"}
+};
+const U={en:{mm:"mm",cm:"cm",m:"m",km:"km",m2:"m²",in:"inches",ftin:"feet and inches",yd:"yards",mi:"miles",sqft:"sq ft"},
+         ru:{mm:"мм",cm:"см",m:"м",km:"км",m2:"м²",in:"дюймах",ftin:"футах и дюймах",yd:"ярдах",mi:"милях",sqft:"кв. футах"}};
+const UM={en:{mm:"millimeters",cm:"centimeters",m:"meters",km:"kilometers",m2:"square meters"},
+          ru:{mm:"миллиметрах",cm:"сантиметрах",m:"метрах",km:"километрах",m2:"квадратных метрах"}};
+const TRICK={
+ en:{"in>cm":"Inches × 2.5, then add about 2%. 1 in = 2.54 cm.","in>mm":"1/16 in ≈ 1.6 mm, 1/8 ≈ 3.2 mm, 1/4 ≈ 6.4 mm, 1/2 = 12.7 mm, 1 in = 25.4 mm.",
+  "ft>cm":"Feet × 30, then add 1.6%. 1 ft = 30.48 cm, 1 in = 2.54 cm.","ft>mm":"1 ft = 304.8 mm. Feet × 300, plus 1.6%, then add the inches × 25.4.",
+  "yd>m":"Yards × 0.9, then add 1.6%. 1 yd = 0.9144 m.","mi>km":"Miles × 1.6. Exact: 1.609344.","sqft>m2":"Sq ft ÷ 10, then take away 7%. 1 m² ≈ 10.76 sq ft.",
+  "cm>in":"Centimeters ÷ 2.5, then take away 2%. 10 cm ≈ 3 15/16 in.","mm>in":"25.4 mm = 1 in. 3 mm ≈ 1/8 in, 6 mm ≈ 1/4 in, 13 mm ≈ 1/2 in.",
+  "cm>ftin":"100 cm ≈ 3′ 3 3/8″. 30 cm ≈ 1 ft. Each extra 2.5 cm ≈ 1 in.","mm>ftin":"1000 mm ≈ 3′ 3 3/8″. 305 mm ≈ 1 ft.",
+  "m>yd":"Meters + 10% ≈ yards. 1 m ≈ 1.094 yd.","km>mi":"Kilometers × 0.62. 10 km ≈ 6.2 mi.","m2>sqft":"m² × 10, then add 8%. 1 m² ≈ 10.76 sq ft."},
+ ru:{"in>cm":"Дюймы × 2,5 и добавь около 2%. 1 дюйм = 2,54 см.","in>mm":"1/16 дюйма ≈ 1,6 мм, 1/8 ≈ 3,2 мм, 1/4 ≈ 6,4 мм, 1/2 = 12,7 мм, 1 дюйм = 25,4 мм.",
+  "ft>cm":"Футы × 30 и добавь 1,6%. 1 фут = 30,48 см, 1 дюйм = 2,54 см.","ft>mm":"1 фут = 304,8 мм. Футы × 300 плюс 1,6%, затем дюймы × 25,4.",
+  "yd>m":"Ярды × 0,9 и добавь 1,6%. 1 ярд = 0,9144 м.","mi>km":"Мили × 1,6. Точно: 1,609344.","sqft>m2":"Кв. футы ÷ 10 и убери 7%. 1 м² ≈ 10,76 кв. фута.",
+  "cm>in":"Сантиметры ÷ 2,5 и убери 2%. 10 см ≈ 3 15/16 дюйма.","mm>in":"25,4 мм = 1 дюйм. 3 мм ≈ 1/8, 6 мм ≈ 1/4, 13 мм ≈ 1/2 дюйма.",
+  "cm>ftin":"100 см ≈ 3′ 3 3/8″. 30 см ≈ 1 фут. Каждые 2,5 см ≈ 1 дюйм.","mm>ftin":"1000 мм ≈ 3′ 3 3/8″. 305 мм ≈ 1 фут.",
+  "m>yd":"Метры + 10% ≈ ярды. 1 м ≈ 1,094 ярда.","km>mi":"Километры × 0,62. 10 км ≈ 6,2 мили.","m2>sqft":"м² × 10 и добавь 8%. 1 м² ≈ 10,76 кв. фута."}
+};
+
+/* ---------- units math (base: mm for length, m² for area) ---------- */
+const MM={mm:1,cm:10,m:1000,km:1e6,in:25.4,ftin:25.4,yd:914.4,mi:1609344};
+const AREA={m2:1,sqft:0.09290304};
+function convert(v,from,to){ if(from in AREA) return v*AREA[from]/AREA[to]; return v*MM[from]/MM[to]; }
+
+/* ---------- formatting ---------- */
+let lang=LS.get("lang","en"); if(!T[lang]) lang="en";
+const dec=()=>lang==="ru"?",":".";
+function num(v,d){ let s=(Math.round(v*10**d)/10**d).toFixed(d); if(d>0) s=s.replace(/\.?0+$/,""); s=s.replace(/\B(?=(\d{3})+(?!\d))/g," "); return s.replace(".",dec()); }
+function frac(inches,den){ // inches to "7 3/8"
+  const sign=inches<0?"-":""; inches=Math.abs(inches);
+  let whole=Math.floor(inches), n=Math.round((inches-whole)*den);
+  if(n===den){whole++;n=0}
+  let d=den; while(n&&n%2===0&&d%2===0){n/=2;d/=2}
+  if(!n) return sign+whole; return sign+(whole?whole+" ":"")+n+"/"+d;
+}
+function fmt(unit,v){
+  switch(unit){
+    case "mm": return num(v,v<1000?1:0)+" "+U[lang].mm;
+    case "cm": return num(v,2)+" "+U[lang].cm;
+    case "m": return num(v,4)+" "+U[lang].m;
+    case "km": return num(v,3)+" "+U[lang].km;
+    case "m2": return num(v,v<10?3:1)+" "+U[lang].m2;
+    case "in": return frac(v,16)+"″";
+    case "ftin": { let ft=Math.floor(v/12), i=v-ft*12; if(Math.round(i*16)===192){ft++;i=0} return ft+"′ "+frac(i,16)+"″"; }
+    case "yd": return num(v,1)+" yd";
+    case "mi": return num(v,2)+" mi";
+    case "sqft": return num(v,0)+" sq ft";
+  }
+}
+function bigFmt(g){ // giant question display: [main, small suffix]
+  if(g.unit==="ftin"){ const ft=Math.floor(g.v/12), i=g.v-ft*12; return [ft+"′"+(i?" "+frac(i,16)+"″":""),""]; }
+  if(g.unit==="in") return [frac(g.v,16)+"″",""];
+  if(g.unit==="sqft") return [num(g.v,0),"sq ft"];
+  const s=fmt(g.unit,g.v).split(" "); const suf=s.pop(); return [s.join(" "),suf];
+}
+
+/* ---------- parsing ---------- */
+function parseNum(s){
+  s=String(s||"").trim().replace(/,/g,".").replace(/[″"'′]/g,"").replace(/\s*-\s*(?=\d+\/)/," ");
+  if(!s) return NaN;
+  let m=s.match(/^(\d+(?:\.\d+)?)\s+(\d+)\/(\d+)$/); if(m) return +m[1]+ +m[2]/ +m[3];
+  m=s.match(/^(\d+)\/(\d+)$/); if(m) return +m[1]/ +m[2];
+  m=s.match(/^\d*\.?\d+$/); if(m) return +s;
+  return NaN;
+}
+
+/* ---------- question generation ---------- */
+const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1)), pick=a=>a[Math.floor(Math.random()*a.length)];
+const TINY={in:[1,2,3,4,5,10,12,20,24,30,36,40,50,100],ft:[1,2,3,4,5,6,8,10],yd:[1,2,3,5,10,100],mi:[1,2,3,5,10,100],sqft:[10,20,50,100,200,500,1000]};
+const TINYMAP={in:["in","cm","in>cm"],ft:["ftin","cm","ft>cm"],yd:["yd","m","yd>m"],mi:["mi","km","mi>km"],sqft:["sqft","m2","sqft>m2"]};
+function genTiny(u,dir){ const [iu,mu,tr]=TINYMAP[u]; let n=pick(TINY[u]); const iv=iu==="ftin"?n*12:n;
+  if(dir==="im") return [{unit:iu,v:iv},mu,tr];
+  return [{unit:mu,v:convert(iv,iu,mu)},iu,(u==="ft"?"cm>ftin":tr.split(">").reverse().join(">"))]; }
+function anchor(u){ const d=dec(); if(state.metric==="mm"&&(u==="in"||u==="ft")) return u==="in"?`1″ = 25${d}4 mm · 10″ = 254 mm`:`1′ = 304${d}8 mm · 10′ = 3048 mm`;
+  const A={in:`1″ = 2${d}54 cm · 10″ = 25${d}4 cm`,ft:`1′ = 30${d}48 cm · 10′ = 304${d}8 cm`,
+  yd:`1 yd = 0${d}9144 m · 10 yd = 9${d}144 m`,mi:`1 mi = 1${d}609 km · 10 mi = 16${d}09 km`,sqft:`10 sq ft = 0${d}929 m² · 100 sq ft = 9${d}29 m²`}; return A[u]; }
+function genIM(u,l){
+  if(u==="in"){ if(l==="easy") return [{unit:"in",v:ri(1,24)},"cm","in>cm"];
+    if(l==="mid") return [{unit:"in",v:ri(1,36)+pick([0,.5,.25])},"cm","in>cm"];
+    return [{unit:"in",v:ri(0,11)+ri(1,15)/16},"mm","in>mm"]; }
+  if(u==="ft"){ if(l==="easy") return [{unit:"ftin",v:ri(1,12)*12},"cm","ft>cm"];
+    if(l==="mid") return [{unit:"ftin",v:ri(3,9)*12+ri(1,11)},"cm","ft>cm"];
+    return [{unit:"ftin",v:ri(2,12)*12+ri(0,11)+ri(1,7)/8},"mm","ft>mm"]; }
+  if(u==="yd") return [{unit:"yd",v:l==="easy"?ri(1,10):l==="mid"?ri(11,100):ri(100,400)+pick([0,.5])},"m","yd>m"];
+  if(u==="mi") return [{unit:"mi",v:l==="easy"?ri(1,10):l==="mid"?ri(1,60)/2:ri(20,500)},"km","mi>km"];
+  return [{unit:"sqft",v:l==="easy"?ri(1,20)*10:l==="mid"?ri(2,80)*25:ri(100,5000)},"m2","sqft>m2"];
+}
+function genMI(u,l){
+  if(u==="in"){ if(l==="easy") return [{unit:"cm",v:ri(3,60)},"in","cm>in"];
+    if(l==="mid") return [{unit:"cm",v:ri(2,90)+pick([0,.5])},"in","cm>in"];
+    return [{unit:"mm",v:ri(2,60)},"in","mm>in"]; }
+  if(u==="ft"){ if(l==="easy") return [{unit:"cm",v:ri(10,22)*10},"ftin","cm>ftin"];
+    if(l==="mid") return [{unit:"cm",v:ri(50,350)},"ftin","cm>ftin"];
+    return [{unit:"mm",v:ri(600,4500)},"ftin","mm>ftin"]; }
+  if(u==="yd") return [{unit:"m",v:l==="easy"?ri(1,10):l==="mid"?ri(11,100):ri(100,400)},"yd","m>yd"];
+  if(u==="mi") return [{unit:"km",v:l==="easy"?ri(1,10)*5:l==="mid"?ri(1,100):ri(50,800)},"mi","km>mi"];
+  return [{unit:"m2",v:l==="easy"?ri(1,20)*5:l==="mid"?ri(10,300):ri(100,1500)},"sqft","m2>sqft"];
+}
+function makeQ(){
+  const u=pick(state.units), dir=state.mode==="mix"?pick(["im","mi"]):state.mode;
+  let [given,ansUnit,trick]=state.level==="tiny"?genTiny(u,dir):(dir==="im"?genIM:genMI)(u,state.level);
+  const want=state.metric, other=want==="mm"?"cm":"mm";
+  if(given.unit===other) given={unit:want,v:convert(given.v,other,want)};
+  if(ansUnit===other) ansUnit=want;
+  const SW={"in>cm":"in>mm","ft>cm":"ft>mm","cm>in":"mm>in","cm>ftin":"mm>ftin"};
+  for(const [c,m] of Object.entries(SW)){ if(want==="mm"&&trick===c){trick=m;break} if(want==="cm"&&trick===m){trick=c;break} }
+  return {u,given,ansUnit,trick,truth:convert(given.v,given.unit,ansUnit),hint:false,guess:null,tier:null,pts:0};
+}
+
+/* ---------- scoring ---------- */
+const TOL={mm:.6,cm:.3,m:.01,km:.02,m2:.02,in:.07,ftin:.25,yd:.05,mi:.02,sqft:1};
+function score(q,g){
+  const abs=Math.abs(g-q.truth), rel=abs/Math.abs(q.truth);
+  let tier = (abs<=TOL[q.ansUnit]||rel<=.01)?3 : rel<=.05?2 : rel<=.15?1 : 0;
+  let pts=tier; if(q.hint&&pts>2) pts=2;
+  return {tier,pts,rel};
+}
+
+/* ---------- state ---------- */
+const ROUND=10;
+const state={mode:LS.get("mode","im"),level:LS.get("level","easy"),units:LS.get("units",["in","ft"]),metric:LS.get("metric","cm"),sound:LS.get("sound",true),
+  qs:[],i:0,phase:"ask",score:0,streak:0,bestStreak:0};
+if(!Array.isArray(state.units)||!state.units.length) state.units=["in","ft"];
+
+function newRound(){ state.qs=Array.from({length:ROUND},makeQ); state.i=0; state.phase="ask"; state.score=0; state.streak=0; state.bestStreak=0; renderGame(true); }
+
+/* ---------- sound ---------- */
+let ac=null;
+function beep(tier){
+  if(!state.sound) return;
+  try{ ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+    const notes=tier===3?[660,880,1320]:tier===2?[660,880]:tier===1?[520]:[300,220];
+    notes.forEach((f,k)=>{ const o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime+k*.09;
+      o.type="sine"; o.frequency.value=f; g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.12,t+.015); g.gain.exponentialRampToValueAtTime(.001,t+.22);
+      o.connect(g).connect(ac.destination); o.start(t); o.stop(t+.25); });
+  }catch(e){}
+}
+
+/* ---------- rendering ---------- */
+const $=id=>document.getElementById(id);
+function esc(s){return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]))}
+
+function renderChrome(){
+  const t=T[lang]; document.documentElement.lang=lang;
+  $("tagline").textContent=t.tagline; $("lMode").textContent=t.mode; $("lLevel").textContent=t.level; $("lMetric").textContent=t.metric;
+  $("metricSeg").innerHTML=["cm","mm"].map(k=>`<button type="button" data-metric="${k}" aria-pressed="${state.metric===k}">${U[lang][k]}</button>`).join(""); $("lUnits").textContent=t.units;
+  $("langBtn").textContent=t.lang; $("photoBtn").textContent=t.photo; $("soundBtn").innerHTML=t.sound+" <b>"+(state.sound?t.on:t.off)+"</b>";
+  $("modeSeg").innerHTML=Object.entries(t.modes).map(([k,v])=>`<button type="button" data-mode="${k}" aria-pressed="${state.mode===k}">${v}</button>`).join("");
+  $("levelSeg").innerHTML=Object.entries(t.levels).map(([k,v])=>`<button type="button" data-level="${k}" aria-pressed="${state.level===k}">${v}</button>`).join("");
+  $("unitChips").innerHTML=Object.entries(t.unitNames).map(([k,v])=>`<button type="button" class="chip" data-unit="${k}" aria-pressed="${state.units.includes(k)}">${v}</button>`).join("");
+  $("hSheet").textContent=t.sheet; $("exactNote").textContent=t.note; $("hTricks").textContent=t.tricks; $("hHist").textContent=t.hist; $("clearBtn").textContent=t.clear;
+  const d=dec(), ex=[["1 in","25"+d+"4 mm"],["1 ft","12 in = 30"+d+"48 cm"],["1 yd","3 ft = 0"+d+"9144 m"],["1 mi","1760 yd = 1"+d+"609344 km"],["1 sq ft","0"+d+"09290304 m²"]];
+  $("exactList").innerHTML=ex.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join("");
+  const tk=TRICK[lang], keys=["in>cm","ft>cm","in>mm","cm>in","mi>km","sqft>m2"];
+  const nm={"in>cm":["in","cm"],"ft>cm":["ft","cm"],"in>mm":["in","mm"],"cm>in":["cm","in"],"mi>km":["mi","km"],"sqft>m2":["sq ft","m²"]};
+  $("trickList").innerHTML=keys.map(k=>`<li><b>${nm[k][0]} → ${nm[k][1]}</b><br><span style="color:var(--muted)">${tk[k]}</span></li>`).join("");
+  renderHist();
+}
+function renderHist(){
+  const t=T[lang], h=LS.get("hist",[]);
+  if(!h.length){ $("histList").innerHTML=`<p class="empty">${t.noHist}</p>`; return; }
+  $("histList").innerHTML=h.slice(0,6).map(r=>`<div><span>${t.levels[r.level]||r.level} · ${t.modes[r.mode]||r.mode}</span><b>${r.score} / ${ROUND*3}</b></div>`).join("")+`<p class="empty" style="margin:6px 0 0">${t.noHist}</p>`;
+}
+function statusHTML(){
+  const t=T[lang], best=LS.get("best",{})[state.mode+"|"+state.level]||0;
+  const dots=state.qs.map((q,k)=>`<span class="${q.tier!=null?"t"+q.tier:k===state.i?"now":""}"></span>`).join("");
+  return `<div class="status"><div class="dots" aria-label="${t.q} ${state.i+1} / ${ROUND}">${dots}</div>
+   <div class="stats"><div class="stat"><span class="v">${state.score}</span><span class="k">${t.score}</span></div>
+   <div class="stat ${state.streak>=3?"hot":""}"><span class="v">${state.streak}</span><span class="k">${t.streak}</span></div>
+   <div class="stat"><span class="v">${best}</span><span class="k">${t.best}</span></div></div></div>`;
+}
+function targetText(u){ const t=T[lang]; return (UM[lang][u]||U[lang][u]); }
+
+function renderGame(focus){
+  const t=T[lang], g=$("game");
+  if(state.phase==="done") return renderDone();
+  const q=state.qs[state.i], [main,suf]=bigFmt(q.given);
+  const inputs = q.ansUnit==="ftin"
+    ? `<label class="field"><input id="ansFt" inputmode="decimal" autocomplete="off" aria-label="feet"><span>${t.ftLab}</span></label>
+       <label class="field"><input id="ansIn" inputmode="decimal" autocomplete="off" aria-label="inches"><span>${t.inLab}</span></label>`
+    : `<label class="field"><input id="ans" inputmode="decimal" autocomplete="off" aria-label="answer"><span>${esc(U[lang][q.ansUnit])}</span></label>`;
+  g.innerHTML = statusHTML() + `
+   <div class="q"><div class="ask">${t.ask}</div>
+     <div class="big">${esc(main)}${suf?`<small>${esc(suf)}</small>`:""}</div>
+     <div class="to">${t.inUnit} <b>${esc(targetText(q.ansUnit))}</b>?</div></div>
+   <form id="ansForm" novalidate>${inputs}
+     <button class="primary" type="submit" id="checkBtn">${t.check}</button>
+     ${state.level==="tiny"?"":`<button class="ghost" type="button" id="hintBtn">${t.hint}</button>`}</form>
+   <div class="hintline" id="hintLine">${state.level==="tiny"?`${t.cheat}: <b>${anchor(q.u)}</b>`:q.hint?`<b>${TRICK[lang][q.trick]}</b> ${t.hintCost}`:""}</div>
+   <div id="resultBox"></div>`;
+  $("ansForm").addEventListener("submit",e=>{e.preventDefault(); check();});
+  if($("hintBtn")) $("hintBtn").addEventListener("click",()=>{ q.hint=true; $("hintLine").innerHTML=`<b>${TRICK[lang][q.trick]}</b> ${t.hintCost}`; firstInput().focus(); });
+  if(state.phase==="shown"){ renderResult(!!state.anim); state.anim=false; }
+  else if(focus) firstInput().focus({preventScroll:true});
+}
+const firstInput=()=>$("ans")||$("ansFt");
+
+function check(){
+  const t=T[lang], q=state.qs[state.i]; let g;
+  if(q.ansUnit==="ftin"){ const f=$("ansFt").value.trim(), i=$("ansIn").value.trim();
+    const fv=f?parseNum(f):0, iv=i?parseNum(i):0; g=(!f&&!i)?NaN:fv*12+iv; }
+  else g=parseNum($("ans").value);
+  if(!isFinite(g)){ $("hintLine").innerHTML=`<span class="err">${t.enterNum}</span>`; return; }
+  const r=score(q,g); q.guess=g; q.tier=r.tier; q.pts=r.pts; q.rel=r.rel;
+  state.score+=r.pts; state.streak = r.tier>=2 ? state.streak+1 : 0; state.bestStreak=Math.max(state.bestStreak,state.streak);
+  state.phase="shown"; state.anim=true; beep(r.tier);
+  renderGame(false);
+}
+
+function rulerHTML(q){
+  const t=T[lang], u=q.ansUnit, hi=Math.max(q.truth,q.guess,0)*1.18||1, lo=0;
+  const span=hi-lo, rawStep=span/6, p=10**Math.floor(Math.log10(rawStep)), step=[1,2,2.5,5,10].map(x=>x*p).find(x=>x>=rawStep);
+  const pos=v=>Math.min(100,Math.max(0,(v-lo)/span*100));
+  let ticks="",labs="";
+  for(let v=0; v<=hi+1e-9; v+=step/2){ const maj=Math.abs((v/step)-Math.round(v/step))<1e-6;
+    ticks+=`<i class="tick ${maj?"maj":"min"}" style="left:${pos(v)}%"></i>`;
+    if(maj&&pos(v)<96) labs+=`<span class="tlab" style="left:${pos(v)}%">${u==="ftin"?fmt("ftin",v).replace(/ 0″$/,""):num(v,step<1?2:0)}</span>`; }
+  return `<div class="ruler" aria-hidden="true">
+    <div class="mark ans" style="left:0%" data-to="${pos(q.truth)}"><span class="ml">${t.ans}</span><span class="stem"></span></div>
+    <div class="track">${ticks}</div>
+    <div class="tlabs">${labs}</div>
+    <div class="mark you" style="left:0%" data-to="${pos(q.guess)}"><span class="stem"></span><span class="ml">${t.you}</span></div>
+  </div>`;
+}
+function renderResult(animate){
+  const t=T[lang], q=state.qs[state.i], last=state.i===ROUND-1;
+  const off = q.tier===3 ? "" : `<span class="off">${t.off2(num(q.rel*100,q.rel<.1?1:0))}</span>`;
+  $("resultBox").innerHTML=`<div class="result">
+    <div class="verdict"><span class="pill t${q.tier} ${animate?"pop":""}">${t.v[q.tier]}</span><span class="pts">${t.pts(q.pts)}</span>${off}</div>
+    <div class="answer">${t.correct}: <b>${esc(fmt(q.ansUnit,q.truth))}</b> <span style="color:var(--muted)">· ${t.you}: ${esc(fmt(q.ansUnit,q.guess))}</span></div>
+    ${rulerHTML(q)}
+    <div class="trick"><span class="label">${t.trick}</span>${TRICK[lang][q.trick]}</div>
+    <div class="next"><button class="primary" type="button" id="nextBtn">${last?t.finish:t.next}</button></div></div>`;
+  document.querySelectorAll("#ansForm input,#ansForm button").forEach(el=>el.disabled=true);
+  const marks=document.querySelectorAll(".mark");
+  requestAnimationFrame(()=>requestAnimationFrame(()=>marks.forEach(m=>m.style.left=m.dataset.to+"%")));
+  if(!animate) marks.forEach(m=>m.style.left=m.dataset.to+"%");
+  $("nextBtn").addEventListener("click",next); $("nextBtn").focus({preventScroll:true});
+}
+function next(){
+  if(state.i<ROUND-1){ state.i++; state.phase="ask"; renderGame(true); return; }
+  state.phase="done";
+  const key=state.mode+"|"+state.level, best=LS.get("best",{}); state.newBest=state.score>(best[key]||0);
+  if(state.newBest){ best[key]=state.score; LS.set("best",best); }
+  const h=LS.get("hist",[]); h.unshift({mode:state.mode,level:state.level,score:state.score,at:Date.now()}); LS.set("hist",h.slice(0,20));
+  renderHist(); renderGame();
+}
+function renderDone(){
+  const t=T[lang], exact=state.qs.filter(q=>q.tier===3).length;
+  const acc=Math.round(state.qs.reduce((s,q)=>s+Math.max(0,1-Math.min(q.rel,1)),0)/ROUND*100);
+  const rows=state.qs.map((q,k)=>{ const c=["var(--miss)","var(--near)","var(--close)","var(--exact)"][q.tier];
+    return `<tr><td><span class="dot" style="background:${c}"></span>${k+1}</td><td>${esc(fmt(q.given.unit,q.given.v))}</td><td>${esc(fmt(q.ansUnit,q.guess))}</td><td>${esc(fmt(q.ansUnit,q.truth))}</td></tr>`;}).join("");
+  $("game").innerHTML = statusHTML()+`<div class="done">
+    <h2>${state.score}<small> ${t.of} ${ROUND*3}</small></h2>
+    <p class="sub">${t.done}${state.newBest?` · <b style="color:var(--accent)">${t.newBest}</b>`:""}</p>
+    <div class="badges"><span class="pill t3">${exact} ${t.v[3].toLowerCase()}</span><span class="pill t2">${acc}% ${t.acc}</span><span class="pill t1">${state.bestStreak} ${t.bstreak}</span></div>
+    <div class="review"><table><thead><tr>${t.cols.map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="next" style="margin-top:20px"><button class="primary" type="button" id="againBtn">${t.again}</button></div></div>`;
+  $("againBtn").addEventListener("click",newRound); $("againBtn").focus({preventScroll:true});
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  if(b.dataset.metric){ state.metric=b.dataset.metric; LS.set("metric",state.metric); renderChrome(); newRound(); }
+  else if(b.dataset.mode){ state.mode=b.dataset.mode; LS.set("mode",state.mode); renderChrome(); newRound(); }
+  else if(b.dataset.level){ state.level=b.dataset.level; LS.set("level",state.level); renderChrome(); newRound(); }
+  else if(b.dataset.unit){ const u=b.dataset.unit, on=state.units.includes(u);
+    if(on&&state.units.length===1) return; state.units=on?state.units.filter(x=>x!==u):[...state.units,u]; LS.set("units",state.units); renderChrome(); newRound(); }
+  else if(b.id==="langBtn"){ lang=lang==="en"?"ru":"en"; LS.set("lang",lang); renderChrome(); renderGame(false); }
+  else if(b.id==="photoBtn"){ nextPhoto(); }
+  else if(b.id==="soundBtn"){ state.sound=!state.sound; LS.set("sound",state.sound); renderChrome(); }
+  else if(b.id==="clearBtn"){ LS.set("hist",[]); LS.set("best",{}); renderHist(); if(state.phase!=="done") $("game").querySelector(".status").outerHTML=statusHTML(); }
+});
+document.addEventListener("keydown",e=>{ if(e.key==="Enter"&&state.phase==="shown"&&document.activeElement.tagName!=="BUTTON"){ e.preventDefault(); next(); } });
+
+/* ---------- background photos: shuffled bag, no repeats until all are seen ---------- */
+const PHOTOS=14;
+function nextPhoto(){
+  let bag=LS.get("bag",[]), last=LS.get("lastPhoto",0);
+  if(!Array.isArray(bag)||!bag.length){ bag=Array.from({length:PHOTOS},(_,k)=>k+1);
+    for(let k=bag.length-1;k>0;k--){const j=Math.floor(Math.random()*(k+1));[bag[k],bag[j]]=[bag[j],bag[k]];}
+    if(bag[bag.length-1]===last) bag.unshift(bag.pop()); }
+  const n=bag.pop(); LS.set("bag",bag); LS.set("lastPhoto",n);
+  const img=$("bgImg"), url="bg/"+String(n).padStart(2,"0")+".jpg";
+  img.classList.remove("on");
+  const pre=new Image(); pre.onload=()=>{ img.src=url; requestAnimationFrame(()=>img.classList.add("on")); }; pre.src=url;
+}
+nextPhoto(); renderChrome(); newRound();
+})();
+</script>
+
+</body>
+</html>
