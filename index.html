@@ -517,7 +517,7 @@ document.addEventListener("click",e=>{
 document.addEventListener("keydown",e=>{ if(e.key==="Enter"&&state.phase==="shown"&&document.activeElement.tagName!=="BUTTON"){ e.preventDefault(); next(); } });
 
 /* ---------- background photos: shuffled bag, no repeats until all are seen ---------- */
-const PHOTOS=46;
+const PHOTOS=55;
 function nextPhoto(){
   let bag=LS.get("bag"+PHOTOS,[]), last=LS.get("lastPhoto",0);
   if(!Array.isArray(bag)||!bag.length){ bag=Array.from({length:PHOTOS},(_,k)=>k+1);
