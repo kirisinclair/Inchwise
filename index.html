@@ -517,13 +517,13 @@ document.addEventListener("click",e=>{
 document.addEventListener("keydown",e=>{ if(e.key==="Enter"&&state.phase==="shown"&&document.activeElement.tagName!=="BUTTON"){ e.preventDefault(); next(); } });
 
 /* ---------- background photos: shuffled bag, no repeats until all are seen ---------- */
-const PHOTOS=14;
+const PHOTOS=33;
 function nextPhoto(){
-  let bag=LS.get("bag",[]), last=LS.get("lastPhoto",0);
+  let bag=LS.get("bag"+PHOTOS,[]), last=LS.get("lastPhoto",0);
   if(!Array.isArray(bag)||!bag.length){ bag=Array.from({length:PHOTOS},(_,k)=>k+1);
     for(let k=bag.length-1;k>0;k--){const j=Math.floor(Math.random()*(k+1));[bag[k],bag[j]]=[bag[j],bag[k]];}
     if(bag[bag.length-1]===last) bag.unshift(bag.pop()); }
-  const n=bag.pop(); LS.set("bag",bag); LS.set("lastPhoto",n);
+  const n=bag.pop(); LS.set("bag"+PHOTOS,bag); LS.set("lastPhoto",n);
   const img=$("bgImg"), url="bg/"+String(n).padStart(2,"0")+".jpg";
   img.classList.remove("on");
   const pre=new Image(); pre.onload=()=>{ img.src=url; requestAnimationFrame(()=>img.classList.add("on")); }; pre.src=url;
