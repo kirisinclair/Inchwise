@@ -15,7 +15,7 @@ Open `index.html` in a browser, or serve the folder with any static host (GitHub
 
 ## Add photos
 
-Put a JPG into `bg/` named with the next number (`34.jpg`) and change `PHOTOS` in `index.html` to the new count.
+Put a JPG into `bg/` named with the next number (`47.jpg`) and change `PHOTOS` in `index.html` to the new count.
 
 ## Conversion basis
 
